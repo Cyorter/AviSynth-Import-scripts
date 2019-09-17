@@ -1,39 +1,65 @@
-/* Timer for AviSynth */
+/* Timer & Framecounter for AviSynth */
 /* USE THIS ONE INSTEAD OF THE OTHER ONE, THIS TIME IS INDEPENDENT, NO IMAGES! */
 
 /*
-TODO: DEFAULT VALUES NOT WORKING!
+Easy usage (all parameters are optional, returns clip):
+framecounter(vid, pix, frc, fps)
+timer(vid, ms, pix, sec, fps)
 
-Easy usage: timer(seconds, cropmethod, miliseconds, pixelsize)
--Seconds: can be float for miliseconds or int for just seconds (up to 86499 (default value), which is 24 hours).
--CropMethod: (0-5) crop a number of digits from left to right, if 0, it won't crop (00:00:00), if 2, it will crop hours (00:00).
--Miliseconds: (0-3) number of miliseconds digits, if 0, it won't display miliseconds, if 3, output will be (~.000).
--PixelSize: size in pixels * 4, by default is 4 (4x4 = 16) but you can use lower or higher resolutions.
+-vid (Video): if you pass a video parameter you don't need to pass the framecount and framerate.
+-ms (Miliseconds): how many miliseconds do you want for the clip? (range 0-3, default 2).
+-pix (PixelSize): its name says all...
+-frc / sec: duration in frames (int) or seconds (float), if not specified but video is passed, it lengths the same video duration. If specified, it forces the duration and default value is 23:59:59.999.
+-fps: framerate (float), if not specified but video passed it uses video framerate, if specified, it forces its framerate and default value is 30.
 
-Example: t = timer(30, 3, 2, 8).ChangeFPS(framerate, false) #Linear = false
-		 Layer(t, x = width - width(t), y = height - height(t))
-
-Output will be 0:00.00, you must change timer framerate to video framerate.
-Layer is to overlay the video on top of the video (if you don't want a transparent background use Overlay instead of Layer).
-The substraction for x and y is used to display time at the bottom-right, if want to display at top-left use x = 0 and y = 0.
-
-If you just want the timer (no base video), use "timer(59.765, 0, 3, 16).ChangeFPS(60, false)" (in this case you can use any framerate).
+Example:
+AviSource("vid.avi")
+Layer(timer(2,2))
 */
 
-function timer(float sec, int cropm, int ms, int pixs)
+function framecounter(clip "vid", int "pix", int "frc", float "fps")
 {
-    sec   = default(sec, 86400)
-    cropm = default(cropm, 1)
-    ms    = default(ms, 3)
-    pixs  = default(pixs, 4)
+    vid = default(vid, Undefined)
+    fps = default(fps, Defined(vid) ? Framerate(vid) : 30)
 
-    cropm = cropm == 0 ? 0 : cropm == 1 ? 20 : cropm == 2 ? 48 : cropm == 3 ? 68 : cropm == 4 ? 96 : cropm == 5 ? 116 : 1
+    max = ceil(86400 * fps)
+
+    frc = default(frc, Defined(vid) ? Framecount(vid) : max)
+    pix = default(pix, 1)
+
+    cropm = frc >= 10000000 ? 0 : frc >= 1000000 ? 20 : frc >= 100000 ? 40 : frc >= 10000 ? 60 : frc >= 1000 ? 80 : frc >= 100 ? 100 : frc >= 10 ? 120 : 140
+
+    assert(frc > 1 && frc <= max, "Invalid length (maximum is " + String(max) + ").")
+    assert(pix > 0, "Pixel size must be positive.")
+
+    d1 = draw_numbers(true).Loop(10000000)
+    d2 = draw_numbers(true).Loop( 1000000).AssumeFPS(   100).ChangeFPS(1000)
+    d3 = draw_numbers(true).Loop(  100000).AssumeFPS(    10).ChangeFPS(1000)
+    d4 = draw_numbers(true).Loop(   10000).AssumeFPS(     1).ChangeFPS(1000)
+    d5 = draw_numbers(true).Loop(    1000).AssumeFPS(   0.1).ChangeFPS(1000) # 864
+    d6 = draw_numbers(true).Loop(     100).AssumeFPS(  0.01).ChangeFPS(1000)
+    d7 = draw_numbers(true).Loop(      10).AssumeFPS( 0.001).ChangeFPS(1000)
+    d8 = draw_numbers(true).Loop(       1).AssumeFPS(0.0001).ChangeFPS(1000)
+
+    result = StackHorizontal(d8,d7,d6,d5,d4,d3,d2,d1).AssumeFPS(fps,false)
+
+    return result.Crop(cropm,0,-2,0).Trim(0,frc - 1)
+}
+
+function timer(clip "vid", int "ms", int "pix", float "sec", float "fps")
+{
+    vid = default(vid, Undefined)
+    sec = default(sec, Defined(vid) ? Framecount(vid) / Framerate(vid) : 86400)
+    fps = default(fps, Defined(vid) ? Framerate(vid) : 30)
+    ms  = default(ms,  3)
+    pix = default(pix, 1)
+
+    cropm = sec >= 36000 ? 0 : sec >= 3600 ? 20 : sec >= 600 ? 48 : sec >= 60 ? 68 : sec >= 10 ? 96 : 116
     ms = ms == 3 ? -2 : ms == 2 ? -22 : ms == 1 ? -42 : ms == 0 ? -70 : 1
 
-    assert(sec > 0 && sec <= 86400, "Invalid length (maximum is 86499).")
-    assert(cropm != 1, "Invalid crop method (range is 0-5).")
+    assert(sec > 0.001 && sec <= 86400, "Invalid length (maximum is 86400).")
     assert(ms != 1, "Invalid number of ms digits (range is 0-3).")
-    assert(pixs > 0, "Pixel size must be positive.")
+    assert(pix > 0, "Pixel size must be positive.")
 
     m3 = draw_numbers(true).Loop(100)
     m2 = draw_numbers(true).AssumeFPS(100).ChangeFPS(1000).Loop(10)
@@ -52,15 +78,17 @@ function timer(float sec, int cropm, int ms, int pixs)
     s = Loop(s,3600)
     m = Loop(m,24)
 
-	  dot  = dots(1)
-	  ddot = dots(2)
+    dot  = dots(1)
+    ddot = dots(2)
 
-    t = StackHorizontal(h,ddot,m,ddot,s).ChangeFPS(1000).Crop(cropm,0,136 - cropm,0)
+    t = StackHorizontal(h,ddot,m,ddot,s).ChangeFPS(1000).Crop(cropm,0,-2,0) # 136 - cropm
     t = StackHorizontal(t,dot,ml).Crop(0,0,ms,0)
 
     sec = int(sec * 1000) - 1
 
-    return t.Trim(0,sec).PointResize(width(t) * pixs, height(t) * pixs)
+    result = t.PointResize(width(t) * pix, height(t) * pix)
+
+    return result.Trim(0,sec).ChangeFPS(fps,false)
 }
 
 function draw_numbers(bool m)
@@ -71,10 +99,10 @@ function draw_numbers(bool m)
 function dots(int d)
 {
     bit = StackHorizontal(BlankClip(2,1,6,"RGB32",d==1?1000.0:24.0,color=$FF000000),StackVertical(BlankClip(2,4,1,"RGB32",d==1?1000.0:24.0,color=$FF000000),BlankClip(2,4,4,"RGB32",d==1?1000.0:24.0,color=$FFFFFFFF),BlankClip(2,4,1,"RGB32",d==1?1000.0:24.0,color=$FF000000)),BlankClip(2,1,6,"RGB32",d==1?1000.0:24.0,color=$FF000000))
-	
+    
     single = StackHorizontal(StackVertical(BlankClip(2,6,16,"RGB32",24.0,color=$00000000),bit),BlankClip(2,2,22,"RGB32",24.0,color=$00000000))
-	
+    
     double = StackHorizontal(StackVertical(BlankClip(2,6,4,"RGB32",24.0,color=$00000000),bit,BlankClip(2,6,2,"RGB32",24.0,color=$00000000),bit,BlankClip(2,6,4,"RGB32",24.0,color=$00000000)),BlankClip(2,2,22,"RGB32",24.0,color=$00000000))
-	
+    
     return d == 1 ? single : double
 }
