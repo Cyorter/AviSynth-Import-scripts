@@ -81,8 +81,8 @@ function timer(clip "vid", int "ms", int "pix", float "sec", float "fps")
     dot  = dots(1)
     ddot = dots(2)
 
-    t = StackHorizontal(h,ddot,m,ddot,s).ChangeFPS(1000).Crop(cropm,0,-2,0) # 136 - cropm
-    t = StackHorizontal(t,dot,ml).Crop(0,0,ms,0)
+    t = StackHorizontal(h,ddot,m,ddot,s).ChangeFPS(1000)
+    t = StackHorizontal(t,dot,ml).Crop(cropm,0,ms,0)
 
     sec = int(sec * 1000) - 1
 
