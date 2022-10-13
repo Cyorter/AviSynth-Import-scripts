@@ -1,130 +1,43 @@
-/* High Definition Resizer
-A basic script to resize your video to HD (either 4:3 or 16:9), Full HD and Ultra HD (16:9 only).
-This works like a division, will search the closest integer value to PointResize the video.
-Then, if still left to the desired resolution, it will LanczosResize it.
+# High Definition Resizer
+# Made specially for retro-games encodings but can be used for general purpose.
 
-For example, for 320x240 to 960x720 (HD 4:3), the search will result 3, so it will PointResize to 320*3x240*3 (960x720), and as there's no remainder, LanczosResize must do nothing.
-Another example is 160x144 (Game Boy), the search will result 5, so it will PointResize to 160*5x144*5 (800x720), it remains 160 in width so LanczosResize will adjust it to 960x720.
+# ResizeHD (clip, resolution_standarding_name)
+# ResizeHD (clip, custom_width, custom_height)
 
-Made specially for retro-games encodings but can be used for general purpose.
-*/
-
-function ResizeSHD(clip c) # HD 4:3 (960x720)
+function ResizeHD(clip c, string "std")
 {
-	w = width(c)
-	h = height(c)
-	
-	r = (w * 15 <= 960) && (h * 15 <= 720) ? 15 : \
-		(w * 14 <= 960) && (h * 14 <= 720) ? 14 : \
-		(w * 13 <= 960) && (h * 13 <= 720) ? 13 : \
-		(w * 12 <= 960) && (h * 12 <= 720) ? 12 : \
-		(w * 11 <= 960) && (h * 11 <= 720) ? 11 : \
-		(w * 10 <= 960) && (h * 10 <= 720) ? 10 : \
-		(w *  9 <= 960) && (h *  9 <= 720) ?  9 : \
-		(w *  8 <= 960) && (h *  8 <= 720) ?  8 : \
-		(w *  7 <= 960) && (h *  7 <= 720) ?  7 : \
-		(w *  6 <= 960) && (h *  6 <= 720) ?  6 : \
-		(w *  5 <= 960) && (h *  5 <= 720) ?  5 : \
-		(w *  4 <= 960) && (h *  4 <= 720) ?  4 : \
-		(w *  3 <= 960) && (h *  3 <= 720) ?  3 : \
-		(w *  2 <= 960) && (h *  2 <= 720) ?  2 : \
-		(w *  1 <= 960) && (h *  1 <= 720) ?  1 : 0
-	
-	last = r != 0 ? PointResize(c, w * r, h * r) : c
-	return LanczosResize(last, 960, 720)
+	std = default(std,"FHD")
+	std = UCase(std)
+
+	std = std == "HD" ? "WHD" : std
+	std = std == "2K" ? "2HD" : std
+	std = std == "4K" ? "UHD" : std
+	std = std == "4:3" ? "SHD" : std
+	std = std == "1080" ? "FHD" : std
+	std = std == "720" ? "WHD" : std
+
+	# width & height (before)
+	bw = c.width
+	bh = c.height
+
+	# width & height (after)
+	aw = std == "SHD" ? 960 : std == "WHD" ? 1280 : std == "2HD" ? 2048 : std == "UHD" ? 4096 : 1920
+	ah = std == "SHD" ? 720 : std == "WHD" ? 720  : std == "2HD" ? 1080 : std == "UHD" ? 2160 : 1080
+
+	# multiplier
+	m = min(int(aw/bw),int(ah/bh))
+
+	PointResize(c,bw*m,bh*m)
+	return BilinearResize(aw,ah)
 }
 
-function ResizeWHD(clip c) # HD 16:9 (1280x720)
+function ResizeHD(clip c, int aw, int ah)
 {
-	w = width(c)
-	h = height(c)
-	
-	r = (w * 15 <= 1280) && (h * 15 <= 720) ? 15 : \
-		(w * 14 <= 1280) && (h * 14 <= 720) ? 14 : \
-		(w * 13 <= 1280) && (h * 13 <= 720) ? 13 : \
-		(w * 12 <= 1280) && (h * 12 <= 720) ? 12 : \
-		(w * 11 <= 1280) && (h * 11 <= 720) ? 11 : \
-		(w * 10 <= 1280) && (h * 10 <= 720) ? 10 : \
-		(w *  9 <= 1280) && (h *  9 <= 720) ?  9 : \
-		(w *  8 <= 1280) && (h *  8 <= 720) ?  8 : \
-		(w *  7 <= 1280) && (h *  7 <= 720) ?  7 : \
-		(w *  6 <= 1280) && (h *  6 <= 720) ?  6 : \
-		(w *  5 <= 1280) && (h *  5 <= 720) ?  5 : \
-		(w *  4 <= 1280) && (h *  4 <= 720) ?  4 : \
-		(w *  3 <= 1280) && (h *  3 <= 720) ?  3 : \
-		(w *  2 <= 1280) && (h *  2 <= 720) ?  2 : \
-		(w *  1 <= 1280) && (h *  1 <= 720) ?  1 : 0
-	
-	last = r != 0 ? PointResize(c, w * r, h * r) : c
-	return LanczosResize(last, 1280, 720)
-}
+	bw = c.width
+	bh = c.height
 
-function ResizeFHD(clip c) # Full HD (1920x1080)
-{
-	w = width(c)
-	h = height(c)
-	
-	r = (w * 20 <= 1920) && (h * 20 <= 1080) ? 20 : \
-		(w * 19 <= 1920) && (h * 19 <= 1080) ? 19 : \
-		(w * 18 <= 1920) && (h * 18 <= 1080) ? 18 : \
-		(w * 17 <= 1920) && (h * 17 <= 1080) ? 17 : \
-		(w * 16 <= 1920) && (h * 16 <= 1080) ? 16 : \
-		(w * 15 <= 1920) && (h * 15 <= 1080) ? 15 : \
-		(w * 14 <= 1920) && (h * 14 <= 1080) ? 14 : \
-		(w * 13 <= 1920) && (h * 13 <= 1080) ? 13 : \
-		(w * 12 <= 1920) && (h * 12 <= 1080) ? 12 : \
-		(w * 11 <= 1920) && (h * 11 <= 1080) ? 11 : \
-		(w * 10 <= 1920) && (h * 10 <= 1080) ? 10 : \
-		(w *  9 <= 1920) && (h *  9 <= 1080) ?  9 : \
-		(w *  8 <= 1920) && (h *  8 <= 1080) ?  8 : \
-		(w *  7 <= 1920) && (h *  7 <= 1080) ?  7 : \
-		(w *  6 <= 1920) && (h *  6 <= 1080) ?  6 : \
-		(w *  5 <= 1920) && (h *  5 <= 1080) ?  5 : \
-		(w *  4 <= 1920) && (h *  4 <= 1080) ?  4 : \
-		(w *  3 <= 1920) && (h *  3 <= 1080) ?  3 : \
-		(w *  2 <= 1920) && (h *  2 <= 1080) ?  2 : \
-		(w *  1 <= 1920) && (h *  1 <= 1080) ?  1 : 0
-	
-	last = r != 0 ? PointResize(c, w * r, h * r) : c
-	return LanczosResize(last, 1920, 1080)
-}
+	m = min(int(aw/bw),int(ah/bh))
 
-function ResizeUHD(clip c) # Ultra HD (4096x2160)
-{
-	w = width(c)
-	h = height(c)
-	
-	r = (w * 30 <= 4096) && (h * 30 <= 2160) ? 30 : \
-		(w * 29 <= 4096) && (h * 29 <= 2160) ? 29 : \
-		(w * 28 <= 4096) && (h * 28 <= 2160) ? 28 : \
-		(w * 27 <= 4096) && (h * 27 <= 2160) ? 27 : \
-		(w * 26 <= 4096) && (h * 26 <= 2160) ? 26 : \
-		(w * 25 <= 4096) && (h * 25 <= 2160) ? 25 : \
-		(w * 24 <= 4096) && (h * 24 <= 2160) ? 24 : \
-		(w * 23 <= 4096) && (h * 23 <= 2160) ? 23 : \
-		(w * 22 <= 4096) && (h * 22 <= 2160) ? 22 : \
-		(w * 21 <= 4096) && (h * 21 <= 2160) ? 21 : \
-		(w * 20 <= 4096) && (h * 20 <= 2160) ? 20 : \
-		(w * 19 <= 4096) && (h * 19 <= 2160) ? 19 : \
-		(w * 18 <= 4096) && (h * 18 <= 2160) ? 18 : \
-		(w * 17 <= 4096) && (h * 17 <= 2160) ? 17 : \
-		(w * 16 <= 4096) && (h * 16 <= 2160) ? 16 : \
-		(w * 15 <= 4096) && (h * 15 <= 2160) ? 15 : \
-		(w * 14 <= 4096) && (h * 14 <= 2160) ? 14 : \
-		(w * 13 <= 4096) && (h * 13 <= 2160) ? 13 : \
-		(w * 12 <= 4096) && (h * 12 <= 2160) ? 12 : \
-		(w * 11 <= 4096) && (h * 11 <= 2160) ? 11 : \
-		(w * 10 <= 4096) && (h * 10 <= 2160) ? 10 : \
-		(w *  9 <= 4096) && (h *  9 <= 2160) ?  9 : \
-		(w *  8 <= 4096) && (h *  8 <= 2160) ?  8 : \
-		(w *  7 <= 4096) && (h *  7 <= 2160) ?  7 : \
-		(w *  6 <= 4096) && (h *  6 <= 2160) ?  6 : \
-		(w *  5 <= 4096) && (h *  5 <= 2160) ?  5 : \
-		(w *  4 <= 4096) && (h *  4 <= 2160) ?  4 : \
-		(w *  3 <= 4096) && (h *  3 <= 2160) ?  3 : \
-		(w *  2 <= 4096) && (h *  2 <= 2160) ?  2 : \
-		(w *  1 <= 4096) && (h *  1 <= 2160) ?  1 : 0
-	
-	last = r != 0 ? PointResize(c, w * r, h * r) : c
-	return LanczosResize(last, 4096, 2160)
+	PointResize(c,bw*m,bh*m)
+	return BilinearResize(aw,ah)
 }
